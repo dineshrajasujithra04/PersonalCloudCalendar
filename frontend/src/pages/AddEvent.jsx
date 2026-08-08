@@ -3,7 +3,6 @@ import api from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 function AddEvent() {
-
   const navigate = useNavigate();
 
   const [title, setTitle] = useState("");
@@ -15,72 +14,81 @@ function AddEvent() {
     e.preventDefault();
 
     try {
-      await api.post("/events", {
+      await api.post("/events/", {
         title: title,
         description: description,
         event_date: eventDate,
-        event_time: eventTime
+        event_time: eventTime,
       });
 
       alert("Event Added Successfully!");
 
       navigate("/dashboard");
-
     } catch (error) {
-      console.log(error);
+      console.log("Add Event Error:", error);
+
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Response:", error.response.data);
+      }
+
       alert("Failed to add event");
     }
   };
 
-
   return (
-    <div style={{
-      textAlign:"center",
-      marginTop:"50px"
-    }}>
-
+    <div
+      style={{
+        textAlign: "center",
+        marginTop: "50px",
+      }}
+    >
       <h1>Add Event</h1>
 
       <form onSubmit={addEvent}>
-
         <input
           placeholder="Event Title"
           value={title}
-          onChange={(e)=>setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value)}
+          required
         />
 
-        <br/><br/>
+        <br />
+        <br />
 
         <input
           placeholder="Description"
           value={description}
-          onChange={(e)=>setDescription(e.target.value)}
+          onChange={(e) => setDescription(e.target.value)}
         />
 
-        <br/><br/>
+        <br />
+        <br />
 
         <input
           type="date"
           value={eventDate}
-          onChange={(e)=>setEventDate(e.target.value)}
+          onChange={(e) => setEventDate(e.target.value)}
+          required
         />
 
-        <br/><br/>
+        <br />
+        <br />
 
         <input
           type="time"
           value={eventTime}
-          onChange={(e)=>setEventTime(e.target.value)}
+          onChange={(e) => setEventTime(e.target.value)}
+          required
         />
 
-        <br/><br/>
+        <br />
+        <br />
 
         <button type="submit">
           Add Event
         </button>
-
       </form>
-
     </div>
   );
 }

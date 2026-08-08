@@ -1,7 +1,7 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from .database import engine, Base, SessionLocal
 from . import models, schemas, crud
@@ -9,79 +9,127 @@ from .routers import events
 from .security import create_access_token
 
 
-# =========================================================
-# CREATE DATABASE TABLES
-# =========================================================
-
-Base.metadata.create_all(bind=engine)
-
+# ==========================================
+# CREATE FASTAPI APP
+# ==========================================
 
 app = FastAPI()
 
 
-# =========================================================
-# CORS CONFIGURATION
-# =========================================================
+# ==========================================
+# DATABASE TABLES
+# ==========================================
+
+Base.metadata.create_all(bind=engine)
+
+
+# ==========================================
+# DATABASE MIGRATION
+# Add user_id to old events table
+# ==========================================
+
+try:
+    with engine.connect() as conn:
+
+        columns = conn.execute(
+            text("PRAGMA table_info(events)")
+        ).fetchall()
+
+        column_names = [column[1] for column in columns]
+
+        if "user_id" not in column_names:
+
+            conn.execute(
+                text(
+                    "ALTER TABLE events ADD COLUMN user_id INTEGER"
+                )
+            )
+
+            conn.commit()
+
+            print("user_id column added successfully")
+
+        else:
+
+            print("user_id column already exists")
+
+except Exception as e:
+
+    print("Database migration error:", e)
+
+
+# ==========================================
+# CORS
+# ==========================================
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
         "https://personalcalendar-e166.onrender.com",
     ],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
 
-# =========================================================
-# INCLUDE EVENT ROUTER
-# =========================================================
+# ==========================================
+# EVENTS ROUTER
+# ==========================================
 
 app.include_router(events.router)
 
 
-# =========================================================
+# ==========================================
 # DATABASE DEPENDENCY
-# =========================================================
+# ==========================================
 
 def get_db():
+
     db = SessionLocal()
 
     try:
         yield db
+
     finally:
         db.close()
 
 
-# =========================================================
-# HOME API
-# =========================================================
+# ==========================================
+# HOME
+# ==========================================
 
 @app.get("/")
 def home():
+
     return {
         "message": "Welcome to Personal Cloud Calendar API!"
     }
 
 
-# =========================================================
-# REGISTER USER
-# =========================================================
+# ==========================================
+# REGISTER
+# ==========================================
 
 @app.post("/register")
 def register_user(
     user: schemas.UserCreate,
     db: Session = Depends(get_db)
 ):
+
     existing_user = crud.get_user_by_email(
         db,
         user.email
     )
 
     if existing_user:
+
         raise HTTPException(
             status_code=400,
             detail="Email already registered"
@@ -93,16 +141,17 @@ def register_user(
     )
 
 
-# =========================================================
+# ==========================================
 # NORMAL LOGIN
-# Used by your frontend
-# =========================================================
+# Used by your React frontend
+# ==========================================
 
 @app.post("/login")
 def login(
     user: schemas.UserLogin,
     db: Session = Depends(get_db)
 ):
+
     db_user = crud.login_user(
         db,
         user.email,
@@ -110,13 +159,16 @@ def login(
     )
 
     if not db_user:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
 
     access_token = create_access_token(
-        data={"sub": db_user.email}
+        data={
+            "sub": db_user.email
+        }
     )
 
     return {
@@ -129,30 +181,35 @@ def login(
     }
 
 
-# =========================================================
-# OAUTH2 LOGIN
+# ==========================================
+# TOKEN LOGIN
 # Used by Swagger Authorize button
-# =========================================================
+# ==========================================
 
 @app.post("/token")
 def token(
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    username: str = Form(...),
+    password: str = Form(...),
     db: Session = Depends(get_db)
 ):
+
     db_user = crud.login_user(
         db,
-        form_data.username,
-        form_data.password
+        username,
+        password
     )
 
     if not db_user:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid email or password"
         )
 
     access_token = create_access_token(
-        data={"sub": db_user.email}
+        data={
+            "sub": db_user.email
+        }
     )
 
     return {

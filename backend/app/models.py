@@ -10,8 +10,6 @@ class Event(Base):
     description = Column(String)
     event_date = Column(Date)
     event_time = Column(Time)
-
-    # Connect each event to the user who created it
     user_id = Column(Integer, nullable=False)
 
 

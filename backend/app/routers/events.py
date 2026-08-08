@@ -4,12 +4,8 @@ from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
-from .. import crud, schemas, models
+from .. import crud, schemas
 
-
-# =========================================================
-# ROUTER
-# =========================================================
 
 router = APIRouter(
     prefix="/events",
@@ -17,22 +13,11 @@ router = APIRouter(
 )
 
 
-# =========================================================
-# OAUTH2
-# =========================================================
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/token"
-)
-
-
 SECRET_KEY = "mysecretkey123"
 ALGORITHM = "HS256"
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-# =========================================================
-# DATABASE CONNECTION
-# =========================================================
 
 def get_db():
     db = SessionLocal()
@@ -43,16 +28,11 @@ def get_db():
         db.close()
 
 
-# =========================================================
-# GET CURRENT USER
-# =========================================================
-
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     try:
-
         payload = jwt.decode(
             token,
             SECRET_KEY,
@@ -68,15 +48,12 @@ def get_current_user(
             )
 
     except JWTError:
-
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
         )
 
-    user = db.query(models.User).filter(
-        models.User.email == email
-    ).first()
+    user = crud.get_user_by_email(db, email)
 
     if user is None:
         raise HTTPException(
@@ -87,17 +64,12 @@ def get_current_user(
     return user
 
 
-# =========================================================
-# CREATE EVENT
-# =========================================================
-
 @router.post("/")
 def create_event(
     event: schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-
     return crud.create_event(
         db,
         event,
@@ -105,33 +77,23 @@ def create_event(
     )
 
 
-# =========================================================
-# GET ALL EVENTS FOR CURRENT USER
-# =========================================================
-
 @router.get("/")
 def get_events(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-
     return crud.get_events(
         db,
         current_user.id
     )
 
 
-# =========================================================
-# GET ONE EVENT
-# =========================================================
-
 @router.get("/{event_id}")
 def get_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-
     event = crud.get_event(
         db,
         event_id,
@@ -147,18 +109,13 @@ def get_event(
     return event
 
 
-# =========================================================
-# UPDATE EVENT
-# =========================================================
-
 @router.put("/{event_id}")
 def update_event(
     event_id: int,
     updated_event: schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-
     event = crud.update_event(
         db,
         event_id,
@@ -175,17 +132,12 @@ def update_event(
     return event
 
 
-# =========================================================
-# DELETE EVENT
-# =========================================================
-
 @router.delete("/{event_id}")
 def delete_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user=Depends(get_current_user)
 ):
-
     event = crud.delete_event(
         db,
         event_id,
