@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from .database import engine, Base, SessionLocal
@@ -7,12 +8,21 @@ from . import models, schemas, crud
 from .routers import events
 from .security import create_access_token
 
-# Create database tables
+
+# =========================================================
+# CREATE DATABASE TABLES
+# =========================================================
+
 Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI()
 
-# ---------------- CORS Configuration ----------------
+
+# =========================================================
+# CORS CONFIGURATION
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -25,20 +35,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Event Router
+
+# =========================================================
+# INCLUDE EVENT ROUTER
+# =========================================================
+
 app.include_router(events.router)
 
 
-# Database Dependency
+# =========================================================
+# DATABASE DEPENDENCY
+# =========================================================
+
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
         db.close()
 
 
-# Home API
+# =========================================================
+# HOME API
+# =========================================================
+
 @app.get("/")
 def home():
     return {
@@ -46,13 +67,19 @@ def home():
     }
 
 
-# Register User
+# =========================================================
+# REGISTER USER
+# =========================================================
+
 @app.post("/register")
 def register_user(
     user: schemas.UserCreate,
     db: Session = Depends(get_db)
 ):
-    existing_user = crud.get_user_by_email(db, user.email)
+    existing_user = crud.get_user_by_email(
+        db,
+        user.email
+    )
 
     if existing_user:
         raise HTTPException(
@@ -60,10 +87,17 @@ def register_user(
             detail="Email already registered"
         )
 
-    return crud.create_user(db, user)
+    return crud.create_user(
+        db,
+        user
+    )
 
 
-# Login User
+# =========================================================
+# NORMAL LOGIN
+# Used by your frontend
+# =========================================================
+
 @app.post("/login")
 def login(
     user: schemas.UserLogin,
@@ -92,4 +126,36 @@ def login(
         "user_id": db_user.id,
         "name": db_user.name,
         "email": db_user.email
+    }
+
+
+# =========================================================
+# OAUTH2 LOGIN
+# Used by Swagger Authorize button
+# =========================================================
+
+@app.post("/token")
+def token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    db_user = crud.login_user(
+        db,
+        form_data.username,
+        form_data.password
+    )
+
+    if not db_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    access_token = create_access_token(
+        data={"sub": db_user.email}
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
     }

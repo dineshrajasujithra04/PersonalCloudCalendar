@@ -1,33 +1,68 @@
 from sqlalchemy.orm import Session
+
 from app import models, schemas
 from app.security import hash_password, verify_password
 
 
+# =========================================================
+# EVENT FUNCTIONS
+# =========================================================
+
+
 # Create a new event
-def create_event(db: Session, event: schemas.EventCreate):
+def create_event(
+    db: Session,
+    event: schemas.EventCreate,
+    user_id: int
+):
     db_event = models.Event(
         title=event.title,
         description=event.description,
         event_date=event.event_date,
-        event_time=event.event_time
+        event_time=event.event_time,
+        user_id=user_id
     )
+
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+
     return db_event
 
 
-# Get all events
-def get_events(db: Session):
-    return db.query(models.Event).all()
+# Get only events belonging to the logged-in user
+def get_events(
+    db: Session,
+    user_id: int
+):
+    return db.query(models.Event).filter(
+        models.Event.user_id == user_id
+    ).all()
 
 
-# Get a single event by ID
-def get_event(db: Session, event_id: int):
-    return db.query(models.Event).filter(models.Event.id == event_id).first()
-# Update an event
-def update_event(db: Session, event_id: int, updated_event: schemas.EventCreate):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+# Get one event belonging to the logged-in user
+def get_event(
+    db: Session,
+    event_id: int,
+    user_id: int
+):
+    return db.query(models.Event).filter(
+        models.Event.id == event_id,
+        models.Event.user_id == user_id
+    ).first()
+
+
+# Update an event belonging to the logged-in user
+def update_event(
+    db: Session,
+    event_id: int,
+    updated_event: schemas.EventCreate,
+    user_id: int
+):
+    event = db.query(models.Event).filter(
+        models.Event.id == event_id,
+        models.Event.user_id == user_id
+    ).first()
 
     if event is None:
         return None
@@ -41,9 +76,18 @@ def update_event(db: Session, event_id: int, updated_event: schemas.EventCreate)
     db.refresh(event)
 
     return event
-# Delete an event
-def delete_event(db: Session, event_id: int):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+
+
+# Delete an event belonging to the logged-in user
+def delete_event(
+    db: Session,
+    event_id: int,
+    user_id: int
+):
+    event = db.query(models.Event).filter(
+        models.Event.id == event_id,
+        models.Event.user_id == user_id
+    ).first()
 
     if event is None:
         return None
@@ -52,9 +96,21 @@ def delete_event(db: Session, event_id: int):
     db.commit()
 
     return event
+
+
+# =========================================================
+# USER FUNCTIONS
+# =========================================================
+
+
 # Create a new user
-def create_user(db: Session, user: schemas.UserCreate):
-    hashed_password = hash_password(user.password)
+def create_user(
+    db: Session,
+    user: schemas.UserCreate
+):
+    hashed_password = hash_password(
+        user.password
+    )
 
     db_user = models.User(
         name=user.name,
@@ -70,10 +126,21 @@ def create_user(db: Session, user: schemas.UserCreate):
 
 
 # Get user by email
-def get_user_by_email(db: Session, email: str):
-    return db.query(models.User).filter(models.User.email == email).first()
+def get_user_by_email(
+    db: Session,
+    email: str
+):
+    return db.query(models.User).filter(
+        models.User.email == email
+    ).first()
+
+
 # Verify user login
-def login_user(db: Session, email: str, password: str):
+def login_user(
+    db: Session,
+    email: str,
+    password: str
+):
     user = db.query(models.User).filter(
         models.User.email == email
     ).first()
@@ -81,7 +148,10 @@ def login_user(db: Session, email: str, password: str):
     if not user:
         return None
 
-    if not verify_password(password, user.password):
+    if not verify_password(
+        password,
+        user.password
+    ):
         return None
 
     return user

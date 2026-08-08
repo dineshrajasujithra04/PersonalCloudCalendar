@@ -11,6 +11,9 @@ class Event(Base):
     event_date = Column(Date)
     event_time = Column(Time)
 
+    # Connect each event to the user who created it
+    user_id = Column(Integer, nullable=False)
+
 
 class User(Base):
     __tablename__ = "users"
