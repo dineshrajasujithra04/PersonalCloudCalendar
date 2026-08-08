@@ -7,7 +7,6 @@ const api = axios.create({
   },
 });
 
-// Automatically send login token with every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
