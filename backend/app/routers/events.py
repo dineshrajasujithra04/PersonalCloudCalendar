@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
 from .. import crud, schemas
+from ..security import get_current_user_email
 
 
 router = APIRouter(
@@ -13,12 +12,7 @@ router = APIRouter(
 )
 
 
-SECRET_KEY = "mysecretkey123"
-ALGORITHM = "HS256"
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
-
-
+# Database dependency
 def get_db():
     db = SessionLocal()
 
@@ -28,31 +22,13 @@ def get_db():
         db.close()
 
 
-def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+# Create Event
+@router.post("/")
+def create_event(
+    event: schemas.EventCreate,
+    db: Session = Depends(get_db),
+    email: str = Depends(get_current_user_email)
 ):
-    try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        email = payload.get("sub")
-
-        if email is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid token"
-            )
-
-    except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid token"
-        )
-
     user = crud.get_user_by_email(db, email)
 
     if user is None:
@@ -61,43 +37,52 @@ def get_current_user(
             detail="User not found"
         )
 
-    return user
-
-
-@router.post("/")
-def create_event(
-    event: schemas.EventCreate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
-):
     return crud.create_event(
         db,
         event,
-        current_user.id
+        user.id
     )
 
 
+# Get all Events
 @router.get("/")
 def get_events(
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    email: str = Depends(get_current_user_email)
 ):
+    user = crud.get_user_by_email(db, email)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
+        )
+
     return crud.get_events(
         db,
-        current_user.id
+        user.id
     )
 
 
+# Get one Event
 @router.get("/{event_id}")
 def get_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    email: str = Depends(get_current_user_email)
 ):
+    user = crud.get_user_by_email(db, email)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
+        )
+
     event = crud.get_event(
         db,
         event_id,
-        current_user.id
+        user.id
     )
 
     if event is None:
@@ -109,18 +94,27 @@ def get_event(
     return event
 
 
+# Update Event
 @router.put("/{event_id}")
 def update_event(
     event_id: int,
     updated_event: schemas.EventCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    email: str = Depends(get_current_user_email)
 ):
+    user = crud.get_user_by_email(db, email)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
+        )
+
     event = crud.update_event(
         db,
         event_id,
         updated_event,
-        current_user.id
+        user.id
     )
 
     if event is None:
@@ -132,16 +126,25 @@ def update_event(
     return event
 
 
+# Delete Event
 @router.delete("/{event_id}")
 def delete_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user)
+    email: str = Depends(get_current_user_email)
 ):
+    user = crud.get_user_by_email(db, email)
+
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="User not found"
+        )
+
     event = crud.delete_event(
         db,
         event_id,
-        current_user.id
+        user.id
     )
 
     if event is None:
