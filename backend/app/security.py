@@ -1,31 +1,15 @@
-from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
 
 
-# =========================================================
-# JWT SETTINGS
-# =========================================================
-
-SECRET_KEY = "mysecretkey123"
+SECRET_KEY = "personal-calendar-secret-key-2026"
 ALGORITHM = "HS256"
-
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-
-# =========================================================
-# OAUTH2
-# =========================================================
-
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/token"
-)
-
-
-# =========================================================
-# PASSWORD HASHING
-# =========================================================
 
 pwd_context = CryptContext(
     schemes=["bcrypt"],
@@ -33,35 +17,32 @@ pwd_context = CryptContext(
 )
 
 
-def hash_password(password: str):
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def hash_password(password):
     return pwd_context.hash(password)
 
 
-def verify_password(
-    plain_password: str,
-    hashed_password: str
-):
-    return pwd_context.verify(
-        plain_password,
-        hashed_password
-    )
+def get_password_hash(password):
+    return pwd_context.hash(password)
 
 
-# =========================================================
-# CREATE JWT TOKEN
-# =========================================================
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
-def create_access_token(data: dict):
 
+def create_access_token(data, expires_delta=None):
     to_encode = data.copy()
 
-    expire = datetime.utcnow() + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
-    to_encode.update({
-        "exp": expire
-    })
+    to_encode.update({"exp": expire})
 
     encoded_jwt = jwt.encode(
         to_encode,
@@ -70,3 +51,32 @@ def create_access_token(data: dict):
     )
 
     return encoded_jwt
+
+
+def get_current_user_email(
+    token: str = Depends(oauth2_scheme)
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={
+            "WWW-Authenticate": "Bearer"
+        }
+    )
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        email = payload.get("sub")
+
+        if email is None:
+            raise credentials_exception
+
+        return email
+
+    except JWTError:
+        raise credentials_exception

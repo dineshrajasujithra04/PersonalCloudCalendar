@@ -7,41 +7,45 @@ from . import models, schemas, crud
 from .routers import events
 from .security import create_access_token
 
+
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
 
-# ---------------- CORS Configuration ----------------
+app = FastAPI(
+    title="Personal Cloud Calendar API"
+)
 
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:5174",
-        "https://personal-calendar-c6nq.onrender.com",
+        "https://personalcloudcalendarfrontend.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 # Include Event Router
 app.include_router(events.router)
 
 
-# ---------------- Database Dependency ----------------
-
+# Database Dependency
 def get_db():
     db = SessionLocal()
+
     try:
         yield db
     finally:
         db.close()
 
 
-# ---------------- Home API ----------------
-
+# Home API
 @app.get("/")
 def home():
     return {
@@ -49,14 +53,16 @@ def home():
     }
 
 
-# ---------------- Register User ----------------
-
+# Register User
 @app.post("/register")
 def register_user(
     user: schemas.UserCreate,
     db: Session = Depends(get_db)
 ):
-    existing_user = crud.get_user_by_email(db, user.email)
+    existing_user = crud.get_user_by_email(
+        db,
+        user.email
+    )
 
     if existing_user:
         raise HTTPException(
@@ -67,8 +73,7 @@ def register_user(
     return crud.create_user(db, user)
 
 
-# ---------------- Login User ----------------
-
+# Login User
 @app.post("/login")
 def login(
     user: schemas.UserLogin,
@@ -87,7 +92,9 @@ def login(
         )
 
     access_token = create_access_token(
-        data={"sub": db_user.email}
+        data={
+            "sub": db_user.email
+        }
     )
 
     return {
