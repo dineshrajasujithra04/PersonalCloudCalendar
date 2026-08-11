@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import inspect, text
 
 from .database import engine, Base, SessionLocal
 from . import models, schemas, crud
@@ -8,16 +9,50 @@ from .routers import events
 from .security import create_access_token
 
 
-# Create database tables
+# =========================================================
+# CREATE DATABASE TABLES
+# =========================================================
+
 Base.metadata.create_all(bind=engine)
 
+
+# =========================================================
+# DATABASE MIGRATION
+# Add user_id column if it does not already exist
+# =========================================================
+
+inspector = inspect(engine)
+
+if "events" in inspector.get_table_names():
+
+    event_columns = [
+        column["name"]
+        for column in inspector.get_columns("events")
+    ]
+
+    if "user_id" not in event_columns:
+
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE events ADD COLUMN user_id INTEGER"
+                )
+            )
+
+
+# =========================================================
+# FASTAPI APP
+# =========================================================
 
 app = FastAPI(
     title="Personal Cloud Calendar API"
 )
 
 
+# =========================================================
 # CORS
+# =========================================================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -31,11 +66,17 @@ app.add_middleware(
 )
 
 
-# Include Event Router
+# =========================================================
+# INCLUDE EVENT ROUTER
+# =========================================================
+
 app.include_router(events.router)
 
 
-# Database Dependency
+# =========================================================
+# DATABASE DEPENDENCY
+# =========================================================
+
 def get_db():
     db = SessionLocal()
 
@@ -45,7 +86,10 @@ def get_db():
         db.close()
 
 
-# Home API
+# =========================================================
+# HOME API
+# =========================================================
+
 @app.get("/")
 def home():
     return {
@@ -53,12 +97,16 @@ def home():
     }
 
 
-# Register User
+# =========================================================
+# REGISTER USER
+# =========================================================
+
 @app.post("/register")
 def register_user(
     user: schemas.UserCreate,
     db: Session = Depends(get_db)
 ):
+
     existing_user = crud.get_user_by_email(
         db,
         user.email
@@ -73,12 +121,16 @@ def register_user(
     return crud.create_user(db, user)
 
 
-# Login User
+# =========================================================
+# LOGIN USER
+# =========================================================
+
 @app.post("/login")
 def login(
     user: schemas.UserLogin,
     db: Session = Depends(get_db)
 ):
+
     db_user = crud.login_user(
         db,
         user.email,
