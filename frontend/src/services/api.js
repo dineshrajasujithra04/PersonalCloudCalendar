@@ -2,8 +2,12 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "https://personal-calendar-backend-rjzx.onrender.com",
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
+// Automatically send JWT token with every request
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
