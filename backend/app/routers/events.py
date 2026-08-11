@@ -11,12 +11,13 @@ router = APIRouter(
     tags=["Events"]
 )
 
-# MUST BE THE SAME AS security.py
 SECRET_KEY = "personal-calendar-secret-key-2026"
 ALGORITHM = "HS256"
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
 
+
+# ---------------- DATABASE ----------------
 
 def get_db():
     db = SessionLocal()
@@ -26,6 +27,8 @@ def get_db():
     finally:
         db.close()
 
+
+# ---------------- CURRENT USER ----------------
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -63,6 +66,8 @@ def get_current_user(
     return user
 
 
+# ---------------- CREATE EVENT ----------------
+
 @router.post("/")
 def create_event(
     event: schemas.EventCreate,
@@ -76,6 +81,8 @@ def create_event(
     )
 
 
+# ---------------- GET EVENTS ----------------
+
 @router.get("/")
 def get_events(
     db: Session = Depends(get_db),
@@ -86,6 +93,8 @@ def get_events(
         current_user.id
     )
 
+
+# ---------------- GET ONE EVENT ----------------
 
 @router.get("/{event_id}")
 def get_event(
@@ -107,6 +116,8 @@ def get_event(
 
     return event
 
+
+# ---------------- UPDATE EVENT ----------------
 
 @router.put("/{event_id}")
 def update_event(
@@ -130,6 +141,8 @@ def update_event(
 
     return event
 
+
+# ---------------- DELETE EVENT ----------------
 
 @router.delete("/{event_id}")
 def delete_event(
