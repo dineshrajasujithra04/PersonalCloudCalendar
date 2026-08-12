@@ -8,15 +8,11 @@ from .. import crud, schemas
 from ..security import SECRET_KEY, ALGORITHM
 
 
-# ---------------- ROUTER ----------------
-
 router = APIRouter(
     prefix="/events",
     tags=["Events"]
 )
 
-
-# ---------------- OAUTH ----------------
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/login"
@@ -41,29 +37,28 @@ def get_current_user(
     db: Session = Depends(get_db)
 ):
     try:
-        # Decode JWT token
         payload = jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
-        # Get email from token
         email = payload.get("sub")
 
-        if not email:
+        if email is None:
             raise HTTPException(
                 status_code=401,
-                detail="Invalid token"
+                detail="Invalid token: email missing"
             )
 
-    except JWTError:
+    except JWTError as e:
+        print("JWT ERROR:", str(e))
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
         )
 
-    # Find user in database
     user = crud.get_user_by_email(
         db,
         email
@@ -78,9 +73,7 @@ def get_current_user(
     return user
 
 
-# ==================================================
-# CREATE EVENT
-# ==================================================
+# ---------------- CREATE EVENT ----------------
 
 @router.post("/")
 def create_event(
@@ -95,9 +88,7 @@ def create_event(
     )
 
 
-# ==================================================
-# GET ALL EVENTS
-# ==================================================
+# ---------------- GET ALL EVENTS ----------------
 
 @router.get("/")
 def get_events(
@@ -110,9 +101,7 @@ def get_events(
     )
 
 
-# ==================================================
-# GET ONE EVENT
-# ==================================================
+# ---------------- GET ONE EVENT ----------------
 
 @router.get("/{event_id}")
 def get_event(
@@ -135,9 +124,7 @@ def get_event(
     return event
 
 
-# ==================================================
-# UPDATE EVENT
-# ==================================================
+# ---------------- UPDATE EVENT ----------------
 
 @router.put("/{event_id}")
 def update_event(
@@ -162,9 +149,7 @@ def update_event(
     return event
 
 
-# ==================================================
-# DELETE EVENT
-# ==================================================
+# ---------------- DELETE EVENT ----------------
 
 @router.delete("/{event_id}")
 def delete_event(
