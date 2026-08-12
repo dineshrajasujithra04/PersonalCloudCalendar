@@ -5,7 +5,10 @@ from sqlalchemy.orm import Session
 
 from ..database import SessionLocal
 from .. import crud, schemas
+from ..security import SECRET_KEY, ALGORITHM
 
+
+# ---------------- ROUTER ----------------
 
 router = APIRouter(
     prefix="/events",
@@ -13,17 +16,14 @@ router = APIRouter(
 )
 
 
-SECRET_KEY = "personal-calendar-secret-key-2026"
-ALGORITHM = "HS256"
+# ---------------- OAUTH ----------------
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/login"
 )
 
 
-# =========================================================
-# DATABASE
-# =========================================================
+# ---------------- DATABASE ----------------
 
 def get_db():
     db = SessionLocal()
@@ -34,38 +34,36 @@ def get_db():
         db.close()
 
 
-# =========================================================
-# CURRENT USER
-# =========================================================
+# ---------------- CURRENT USER ----------------
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-
     try:
-
+        # Decode JWT token
         payload = jwt.decode(
             token,
             SECRET_KEY,
             algorithms=[ALGORITHM]
         )
 
+        # Get email from token
         email = payload.get("sub")
 
-        if email is None:
+        if not email:
             raise HTTPException(
                 status_code=401,
-                detail="Invalid token: email missing"
+                detail="Invalid token"
             )
 
     except JWTError:
-
         raise HTTPException(
             status_code=401,
-            detail="Invalid or expired token"
+            detail="Invalid token"
         )
 
+    # Find user in database
     user = crud.get_user_by_email(
         db,
         email
@@ -80,9 +78,9 @@ def get_current_user(
     return user
 
 
-# =========================================================
+# ==================================================
 # CREATE EVENT
-# =========================================================
+# ==================================================
 
 @router.post("/")
 def create_event(
@@ -90,7 +88,6 @@ def create_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-
     return crud.create_event(
         db,
         event,
@@ -98,25 +95,24 @@ def create_event(
     )
 
 
-# =========================================================
-# GET EVENTS
-# =========================================================
+# ==================================================
+# GET ALL EVENTS
+# ==================================================
 
 @router.get("/")
 def get_events(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-
     return crud.get_events(
         db,
         current_user.id
     )
 
 
-# =========================================================
+# ==================================================
 # GET ONE EVENT
-# =========================================================
+# ==================================================
 
 @router.get("/{event_id}")
 def get_event(
@@ -124,7 +120,6 @@ def get_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-
     event = crud.get_event(
         db,
         event_id,
@@ -140,9 +135,9 @@ def get_event(
     return event
 
 
-# =========================================================
+# ==================================================
 # UPDATE EVENT
-# =========================================================
+# ==================================================
 
 @router.put("/{event_id}")
 def update_event(
@@ -151,7 +146,6 @@ def update_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-
     event = crud.update_event(
         db,
         event_id,
@@ -168,9 +162,9 @@ def update_event(
     return event
 
 
-# =========================================================
+# ==================================================
 # DELETE EVENT
-# =========================================================
+# ==================================================
 
 @router.delete("/{event_id}")
 def delete_event(
@@ -178,7 +172,6 @@ def delete_event(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-
     event = crud.delete_event(
         db,
         event_id,
