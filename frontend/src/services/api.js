@@ -7,64 +7,50 @@ const api = axios.create({
   },
 });
 
-
-/*
-   Add JWT token automatically
-   to every protected request.
-*/
+// Add token ONLY to requests that already have a logged-in token
 api.interceptors.request.use(
   (config) => {
-
     const token = localStorage.getItem("token");
 
     console.log(
+      "Request:",
+      config.url,
       "Sending token:",
       token ? "YES" : "NO"
     );
 
     if (token) {
-
-      config.headers = config.headers || {};
-
-      config.headers.Authorization =
-        `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
   },
-
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-
-/*
-   Handle authentication errors.
-*/
+// Handle 401 errors
 api.interceptors.response.use(
-  (response) => {
-
-    return response;
-  },
+  (response) => response,
 
   (error) => {
+    const requestURL = error.config?.url;
 
-    if (error.response?.status === 401) {
+    console.log("API ERROR:", requestURL);
+    console.log("STATUS:", error.response?.status);
+    console.log("DATA:", error.response?.data);
 
-      console.log(
-        "Authentication failed:",
-        error.response.data
-      );
-
+    // IMPORTANT:
+    // Do NOT call this "session expired" for login.
+    if (
+      error.response?.status === 401 &&
+      requestURL !== "/login"
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("userId");
       localStorage.removeItem("userName");
       localStorage.removeItem("userEmail");
 
-      alert(
-        "Your login session has expired. Please login again."
-      );
+      alert("Session expired. Please login again.");
 
       window.location.href = "/";
     }
@@ -72,6 +58,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
 
 export default api;
