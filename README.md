@@ -4,6 +4,7 @@
 
 👉 [Click Here to Open the Personal Cloud Calendar](https://personalcloudcalendarfrontend.onrender.com)
 
+
 ## 📌 Project Description
 
 Personal Cloud Calendar is a cloud-based calendar application that allows users to securely register, login, and manage their personal events.
@@ -36,6 +37,13 @@ Personal Cloud Calendar is a cloud-based calendar application that allows users 
 
 ## 🌐 Deployment
 
-Frontend: [Open Application](https://personalcloudcalendarfrontend.onrender.com)
+### Frontend
+👉 [Open Personal Cloud Calendar](https://personalcloudcalendarfrontend.onrender.com)
 
-Backend: FastAPI backend deployed separately on Render.
+### Backend API
+👉 [Open Backend API](https://personal-calendar-backend-rjzx.onrender.com)
+
+### API Documentation
+👉 [Open Swagger API Documentation](https://personal-calendar-backend-rjzx.onrender.com/docs)
+
+The frontend communicates with the deployed FastAPI backend through REST APIs.
